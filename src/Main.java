@@ -5,6 +5,7 @@ import java.io.IOException;
 public class Main {
     public static void main(String[] args) {
 
+
 //                ------------------------ Scenario #1: Sensitivity to alpha and beta ------------------------
 
         int experiments = 50;
