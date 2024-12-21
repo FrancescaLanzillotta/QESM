@@ -8,8 +8,8 @@ public class Utils {
     static public ArrayList<ComputeNode> createNetworkTopology(int nMuApps, int nLambdaApps, double alpha){
         ArrayList<ComputeNode> computeNodes = new ArrayList<>(14);
 
-        int maxApps = nMuApps + nLambdaApps;
-        ComputeNode cloud = new ComputeNode(0, maxApps, (double) (nMuApps + 1) / maxApps, 12);
+        int maxCon = (int) ((nMuApps + nLambdaApps) + ((nMuApps + nLambdaApps) * 0.5));
+        ComputeNode cloud = new ComputeNode(0, maxCon, (nMuApps + (nMuApps * 0.5)) / maxCon, 12);
         computeNodes.add(cloud);
 
         for (int i = 1; i < 14; i++){

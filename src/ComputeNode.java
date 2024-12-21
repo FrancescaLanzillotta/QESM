@@ -1,4 +1,3 @@
-import java.util.ArrayList;
 import java.util.LinkedList;
 
 public class ComputeNode {
@@ -43,8 +42,12 @@ public class ComputeNode {
         return maxContainers;
     }
 
-    public int getRemainderContainers(){
+    public int getRemainderLambdaContainers(){
         return maxContainers - muContainers.size() - lambdaContainers.size();
+    }
+
+    public int getRemainderMuContainers(){
+        return maxMu - muContainers.size();
     }
 
     public MuContainer addMuContainer(String muAppId){
@@ -53,6 +56,7 @@ public class ComputeNode {
             mc = new MuContainer(id + "-" + muAppId);
             muContainers.add(mc);
         }
+
         return mc;
     }
 
@@ -63,6 +67,12 @@ public class ComputeNode {
             lambdaContainers.add(lc);
         }
         return lc;
+    }
+
+    public void removeMuContainer(MuContainer mc){ muContainers.remove(mc);}
+
+    public void removeInactive(){
+        lambdaContainers.removeIf(lc -> lc.getAvailResources() == lc.getServiceRate());
     }
 
     public void removeLambdaContainer(LambdaContainer lc){

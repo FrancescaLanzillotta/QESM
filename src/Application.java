@@ -2,7 +2,6 @@ public abstract class Application {
     private int invocationRate;
     private int functionData;
     private String id;
-    public abstract void changeType(Orchestrator o);
     public abstract void invokeFunction();
 
     public Application(String id, int invocationRate, int functionData) {

@@ -1,13 +1,12 @@
 public class MuApp extends Application {
-    MuContainer container;
+    private MuContainer container;
 
     public MuApp(int id, int invocationRate, int functionData) {
         super("MU" + id , invocationRate, functionData);
     }
 
-    @Override
-    public void changeType(Orchestrator o) {
-        // TODO: ask orchestrator to switch from mu to lambda
+    public void changeType(Orchestrator o, int stateData) {
+        o.switchMuApp(this, stateData);
     }
 
     public void invokeFunction() {
@@ -18,6 +17,10 @@ public class MuApp extends Application {
         if (muContainer != null){
             container = muContainer;
         }
+    }
+
+    public MuContainer getContainer() {
+        return container;
     }
 
     @Override

@@ -19,7 +19,6 @@ public class LambdaApp extends Application {
         // TODO: Pick a container based on the weights and do something with it (a counter maybe?)
     }
 
-    @Override
     public void changeType(Orchestrator o) {
         // TODO: Ask orchestrator to switch from lambda to mu
     }
