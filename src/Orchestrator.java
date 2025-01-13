@@ -43,11 +43,10 @@ public class Orchestrator {
 
     }
 
-    private void removeMuApp(MuApp muApp, MuContainer muContainer){
+    private void removeMuApp(MuApp muApp){
         muApps.remove(muApp);
-        ComputeNode cn = getComputeNode(muContainer.getId());
-        cn.removeMuContainer(muContainer);
-
+        ComputeNode cn = getComputeNode(muApp.getContainer().getId());
+        cn.removeMuContainer(muApp.getContainer());
     }
 
     private void addLambdaApp(LambdaApp lambdaApp, ComputeNode computeNode){
@@ -429,7 +428,7 @@ public class Orchestrator {
     }
 
     public void switchMuApp(MuApp muApp, int stateData){
-        removeMuApp(muApp, muApp.getContainer());
+        removeMuApp(muApp);
         LambdaApp lambdaApp = new LambdaApp(lambdaApps.size(), muApp.getInvocationRate(), muApp.getFunctionData(), stateData);
         addLambdaApp(lambdaApp, computeNodes.getFirst());
     }
