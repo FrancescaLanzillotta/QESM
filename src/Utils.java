@@ -1,10 +1,6 @@
 import java.util.*;
 public class Utils {
 
-    static public int getComputeNodeIndex(String id){
-        return Integer.parseInt(id.split("-")[0].substring(2));
-    }
-
     static public ArrayList<ComputeNode> createNetworkTopology(int nMuApps, int nLambdaApps, double alpha){
         ArrayList<ComputeNode> computeNodes = new ArrayList<>(14);
 
@@ -22,4 +18,7 @@ public class Utils {
         return computeNodes;
     }
 
+    static public double round(double number){
+        return Math.round(number * 1000000d) / 1000000d;
+    }
 }
