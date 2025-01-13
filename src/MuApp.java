@@ -13,6 +13,11 @@ public class MuApp extends Application {
         container.performFunction();
     }
 
+    @Override
+    public void resetAllocation() {
+        container = null;
+    }
+
     public void assignContainer(MuContainer muContainer){
         if (muContainer != null){
             container = muContainer;

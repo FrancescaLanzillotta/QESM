@@ -12,15 +12,20 @@ public class LambdaApp extends Application {
     }
 
     public void assignLambdaContainer(LambdaContainer lc, double weight){
-        containerWeights.put(lc, weight);
+        if (containerWeights.containsKey(lc)){
+            containerWeights.put(lc, weight + containerWeights.get(lc));
+        } else {
+            containerWeights.put(lc, weight);
+        }
     }
 
     public void invokeFunction() {
         // TODO: Pick a container based on the weights and do something with it (a counter maybe?)
     }
 
-    public void changeType(Orchestrator o) {
-        // TODO: Ask orchestrator to switch from lambda to mu
+    @Override
+    public void resetAllocation() {
+        containerWeights.clear();
     }
 
     public int getStateData() {
@@ -29,6 +34,10 @@ public class LambdaApp extends Application {
 
     public HashMap<LambdaContainer, Double> getContainerWeights() {
         return containerWeights;
+    }
+
+    public void changeType(Orchestrator o) {
+        o.switchLambdaApp(this);
     }
 
     @Override

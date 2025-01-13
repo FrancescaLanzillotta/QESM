@@ -3,6 +3,7 @@ public abstract class Application {
     private int functionData;
     private String id;
     public abstract void invokeFunction();
+    public abstract void resetAllocation();
 
     public Application(String id, int invocationRate, int functionData) {
         this.id = id;
