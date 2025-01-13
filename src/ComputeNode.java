@@ -72,7 +72,7 @@ public class ComputeNode {
     public void removeMuContainer(MuContainer mc){ muContainers.remove(mc);}
 
     public void removeInactive(){
-        lambdaContainers.removeIf(lc -> lc.getAvailResources() == lc.getServiceRate());
+        lambdaContainers.removeIf(lc -> lc.getResidualCapacity() == lc.getServiceRate());
     }
 
     public void removeLambdaContainer(LambdaContainer lc){
@@ -81,6 +81,14 @@ public class ComputeNode {
 
     public LinkedList<LambdaContainer> getLambdaContainers() {
         return lambdaContainers;
+    }
+
+    public double getTotalResidualCapacity(){
+        double totResidual = 0;
+        for (LambdaContainer lambdaContainer : lambdaContainers){
+            totResidual += lambdaContainer.getResidualCapacity();
+        }
+        return totResidual;
     }
 
     public double getAvailableServiceRate(){

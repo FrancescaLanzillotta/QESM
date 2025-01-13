@@ -21,6 +21,96 @@ public class Orchestrator {
         this.beta = beta;
     }
 
+    private ComputeNode getComputeNode(String id){
+        return computeNodes.get(Integer.parseInt(id.split("-")[0].substring(2)));
+    }
+
+    private ComputeNode getCheapestComputeNode(MuApp muApp){
+        ComputeNode cheapest = null;
+        int minHops = Integer.MAX_VALUE;
+        for (ComputeNode cn : computeNodes){
+            if (cn.getRemainderMuContainers() > 0 && cn.getHopsToClient() < minHops){
+                cheapest = cn;
+                minHops = cn.getHopsToClient() * muApp.getFunctionData();
+            }
+        }
+        return cheapest;
+    }
+
+    private void addMuApp(MuApp muApp, ComputeNode computeNode){
+        muApps.add(muApp);
+        muApp.assignContainer(computeNode.addMuContainer(muApp.getId()));
+
+    }
+
+    private void removeMuApp(MuApp muApp, MuContainer muContainer){
+        muApps.remove(muApp);
+        ComputeNode cn = getComputeNode(muContainer.getId());
+        cn.removeMuContainer(muContainer);
+
+    }
+
+    private void addLambdaApp(LambdaApp lambdaApp, ComputeNode computeNode){
+        lambdaApps.add(lambdaApp);
+        double residualInvocation = lambdaApp.getInvocationRate();
+
+        for (LambdaContainer lambdaContainer : computeNode.getLambdaContainers()){
+            if (lambdaContainer.getResidualCapacity() > 0 && residualInvocation > 0){
+                double resources = Math.min(lambdaContainer.getResidualCapacity(), residualInvocation);
+                lambdaApp.assignLambdaContainer(lambdaContainer, resources / lambdaApp.getInvocationRate());
+                lambdaContainer.useResources(resources);
+                residualInvocation -= resources;
+            }
+        }
+
+        while (residualInvocation > 0){
+            LambdaContainer lc = computeNode.addLambdaContainer();
+            if (lc == null){
+                break;
+            } else {
+                double resource = Math.min(lc.getResidualCapacity(), residualInvocation);
+                lambdaApp.assignLambdaContainer(lc, resource / lambdaApp.getInvocationRate());
+                lc.useResources(resource);
+                residualInvocation -= resource;
+            }
+        }
+    }
+
+    private void removeLambdaApp(LambdaApp lambdaApp){
+        lambdaApps.remove(lambdaApp);
+        for (Map.Entry<LambdaContainer, Double> entry : lambdaApp.getContainerWeights().entrySet()){
+            entry.getKey().freeResources(entry.getValue() * lambdaApp.getInvocationRate());
+        }
+        lambdaApp.getContainerWeights().clear();
+
+        for (ComputeNode computeNode : computeNodes){
+            computeNode.removeInactive();
+        }
+    }
+
+    private void resetAllocation(){
+        for (MuApp muApp : muApps){
+            if (muApp.getContainer() != null){
+                ComputeNode cn = getComputeNode(muApp.getContainer().getId());
+                cn.removeMuContainer(muApp.getContainer());
+                muApp.resetAllocation();
+            }
+        }
+
+        for (LambdaApp lambdaApp : lambdaApps){
+            if (!lambdaApp.getContainerWeights().isEmpty()){
+                for (Map.Entry<LambdaContainer, Double> entry : lambdaApp.getContainerWeights().entrySet()){
+                    entry.getKey().freeResources(entry.getValue() * lambdaApp.getInvocationRate());
+                }
+                lambdaApp.getContainerWeights().clear();
+            }
+
+            for (ComputeNode computeNode : computeNodes){
+                computeNode.removeInactive();
+            }
+        }
+    }
+
     /**
      * This method solves the mu-apps allocation sub-problem, which means that all the mu-apps
      * will be assigned to a container on one of the compute nodes.
@@ -39,7 +129,7 @@ public class Orchestrator {
      * the algorithm finds the perfect matching of minimal cost.
      * The time complexity is O(V^3), where V is the set of vertices in the graph.
      */
-    public void assignMuApps(){
+    private void optimalMuAppsAllocation(){
 
         SimpleWeightedGraph<Object, DefaultWeightedEdge> graph = new SimpleWeightedGraph<>(DefaultWeightedEdge.class);
 
@@ -85,7 +175,7 @@ public class Orchestrator {
             if (muApps.contains(graph.getEdgeSource(e))){ // weed out dummies
                 MuApp muApp = (MuApp) graph.getEdgeSource(e);
                 MuContainer muContainer = (MuContainer) graph.getEdgeTarget(e);
-                muApp.assignContainer(computeNodes.get(Utils.getComputeNodeIndex(muContainer.getId())).addMuContainer(muApp.getId()));
+                muApp.assignContainer(getComputeNode(muContainer.getId()).addMuContainer(muApp.getId()));
             }
         }
     }
@@ -97,7 +187,7 @@ public class Orchestrator {
      * contained in the JGraphT library, which uses the successive shortest path algorithm.
      *
      */
-    public void assignLambdaApps(){
+    private void optimalLambdaAppsAllocation(){
         SimpleDirectedWeightedGraph<Object, DefaultWeightedEdge> graph =
                 new SimpleDirectedWeightedGraph<>(DefaultWeightedEdge.class);
 
@@ -135,7 +225,7 @@ public class Orchestrator {
         HashSet<LambdaContainer> inactiveContainers = new HashSet<>();
         for (ComputeNode computeNode : computeNodes) {
             double c1 = computeNode.getHopsToClient();
-            double c2 = Utils.getComputeNodeIndex(computeNode.getId()) == 0 ? 0 : 10;
+            double c2 = computeNode == computeNodes.getFirst() ? 0 : 10;
             // For each container, add two nodes: a dummy node and the container node.
             // The dummy node has one incoming edge connecting it to the container node with cost zero and capacity
             // equal to the service rate of the compute node hosting the container, and one outcoming edge connecting
@@ -200,86 +290,206 @@ public class Orchestrator {
         }
     }
 
-    public ComputeNode getComputeNode(String id){
-        return computeNodes.get(Utils.getComputeNodeIndex(id));
+    public void optimalAppAllocation(boolean display){
+        resetAllocation();
+
+        optimalMuAppsAllocation();
+
+        if (display) {
+            System.out.println("----- Mu apps assigned -----");
+            for (MuApp muApp : muApps){
+                System.out.println(muApp.getId() + " -> " + muApp.getContainer().getId());
+            }
+        }
+
+        optimalLambdaAppsAllocation();
+        if (display) {
+            System.out.println("----- Lambda apps assigned -----");
+            for (LambdaApp lambdaApp : lambdaApps){
+                System.out.println(lambdaApp.getId() + " -> " + lambdaApp.getContainerWeights());
+            }
+        }
     }
 
-    public void addMuApp(MuApp muApp){
-        muApps.add(muApp);
-        ComputeNode cheapest = computeNodes.getFirst();
-        int minHops = cheapest.getHopsToClient();
+    public void greedyAppAllocation(boolean display){
+        resetAllocation();
+        for (MuApp muApp : muApps){
+            addMuApp(muApp, getCheapestComputeNode(muApp));
+        }
+
+        if (display) {
+            System.out.println("----- Mu apps assigned -----");
+            for (MuApp muApp : muApps){
+                System.out.println(muApp.getId() + " -> " + muApp.getContainer().getId());
+            }
+        }
+        for (LambdaApp lambdaApp : lambdaApps){
+            int residualInvocation = lambdaApp.getInvocationRate();
+            while (residualInvocation > 0){
+                int minCost = Integer.MAX_VALUE;
+                ComputeNode cheapest = null;
+                for (ComputeNode cn : computeNodes){
+                    if (cn.getTotalResidualCapacity() > 0 || cn.getRemainderLambdaContainers() > 0){
+                        int c1 = cn.getHopsToClient();
+                        int c2 = cn == computeNodes.getFirst() ? 0 : 10;
+                        if (c1 * lambdaApp.getFunctionData() + c2 * lambdaApp.getStateData() < minCost){
+                            minCost = c1 * lambdaApp.getFunctionData() + c2 * lambdaApp.getStateData();
+                            cheapest = cn;
+                        }
+                    }
+                }
+                LambdaContainer lambdaContainer = null;
+                if (cheapest.getTotalResidualCapacity() > 0){
+                    for (LambdaContainer lc : cheapest.getLambdaContainers()){
+                        if (lc.getResidualCapacity() > 0){
+                            lambdaContainer = lc;
+                        }
+                    }
+                } else if (cheapest.getRemainderLambdaContainers() > 0) {
+                    lambdaContainer = cheapest.addLambdaContainer();
+                }
+                if (lambdaContainer != null){
+                    lambdaApp.assignLambdaContainer(lambdaContainer, (double) 1 / lambdaApp.getInvocationRate());
+                    lambdaContainer.useResources(1);
+                    residualInvocation -= 1;
+                }
+            }
+        }
+//        for (LambdaApp lambdaApp : lambdaApps){
+//            int functionData = lambdaApp.getFunctionData();
+//            int stateData = lambdaApp.getStateData();
+//            int residualInvocation = lambdaApp.getInvocationRate();
+//            while (residualInvocation > 0){
+//                ComputeNode cheapest = getCheapestComputeNode(lambdaApp);
+//                if (cheapest == null){
+//                    System.out.println(computeNodes);
+//                    System.out.println(lambdaApp);
+//                }
+//                double tmp = cheapest.getTotalResidualCapacity();
+//                addLambdaApp(lambdaApp, cheapest);
+//                residualInvocation -= (int) (tmp - cheapest.getTotalResidualCapacity());
+//            }
+//        }
+        if (display) {
+            System.out.println("----- Lambda apps assigned -----");
+            for (LambdaApp lambdaApp : lambdaApps){
+                System.out.println(lambdaApp.getId() + " -> " + lambdaApp.getContainerWeights());
+            }
+        }
+    }
+
+    public void randomAppAllocation(boolean display){
+        resetAllocation();
+        LinkedList<String> muContainers = new LinkedList<>();
         for (ComputeNode cn : computeNodes){
-            if (cn.getRemainderMuContainers() > 0 && cn.getHopsToClient() < minHops){
-                cheapest = cn;
-                minHops = cn.getHopsToClient();
+            for (int i = 0; i < cn.getRemainderMuContainers(); i++){
+                muContainers.add(cn.getId());
             }
         }
-        muApp.assignContainer(cheapest.addMuContainer(muApp.getId()));
-    }
-
-    public void removeMuApp(MuApp muApp, MuContainer muContainer){
-        muApps.remove(muApp);
-        int CNIndex = Utils.getComputeNodeIndex(muContainer.getId());
-        computeNodes.get(CNIndex).removeMuContainer(muContainer);
-
-    }
-
-    public void addLambdaApp(LambdaApp lambdaApp){
-        lambdaApps.add(lambdaApp);
-        ComputeNode cloud = computeNodes.getFirst();
-        double invocationLeft = lambdaApp.getInvocationRate();
-
-        for (LambdaContainer lambdaContainer : cloud.getLambdaContainers()){
-            if (lambdaContainer.getAvailResources() > 0 && invocationLeft > 0){
-                double resource = Math.min(lambdaContainer.getAvailResources(), invocationLeft);
-                lambdaApp.assignLambdaContainer(lambdaContainer, resource / lambdaApp.getInvocationRate());
-                lambdaContainer.useResources(resource);
-                invocationLeft -= resource;
+        for(MuApp muApp : muApps){
+            while (muApp.getContainer() == null){
+                ComputeNode cn = getComputeNode(muContainers.remove((int) (Math.random() * muContainers.size())));
+                addMuApp(muApp, cn);
             }
         }
-        while (invocationLeft > 0){
-            LambdaContainer lc = cloud.addLambdaContainer();
-            double resource = Math.min(lc.getAvailResources(), invocationLeft);
-            lambdaApp.assignLambdaContainer(lc, resource / lambdaApp.getInvocationRate());
-            lc.useResources(resource);
-            invocationLeft -= resource;
-        }
-    }
 
-    public void removeLambdaApp(LambdaApp lambdaApp){
-        lambdaApps.remove(lambdaApp);
-        for (Map.Entry<LambdaContainer, Double> entry : lambdaApp.getContainerWeights().entrySet()){
-            entry.getKey().freeResources(entry.getValue() * lambdaApp.getInvocationRate());
+        if (display) {
+            System.out.println("----- Mu apps assigned -----");
+            for (MuApp muApp : muApps){
+                System.out.println(muApp.getId() + " -> " + muApp.getContainer().getId());
+            }
         }
-        lambdaApp.getContainerWeights().clear();
 
-        for (ComputeNode computeNode : computeNodes){
-            computeNode.removeInactive();
+        ArrayList<LambdaContainer> lambdaContainers = new ArrayList<>();
+        for (ComputeNode cn : computeNodes){
+            while (cn.getRemainderLambdaContainers() > 0){
+                lambdaContainers.add(cn.addLambdaContainer());
+            }
+        }
+        for (LambdaApp lambdaApp : lambdaApps){
+            int residualInvocation = lambdaApp.getInvocationRate();
+            while (residualInvocation > 0){
+                int randomIndex = (int) (Math.random() * lambdaContainers.size());
+                LambdaContainer lambdaContainer = lambdaContainers.get(randomIndex);
+                lambdaApp.assignLambdaContainer(lambdaContainer, (double) 1 / lambdaApp.getInvocationRate());
+                lambdaContainer.useResources(1);
+                residualInvocation -= 1;
+                if (lambdaContainer.getResidualCapacity() == 0){
+                    lambdaContainers.remove(lambdaContainer);
+                }
+            }
+        }
+
+        if (display) {
+            System.out.println("----- Lambda apps assigned -----");
+            for (LambdaApp lambdaApp : lambdaApps){
+                System.out.println(lambdaApp.getId() + " -> " + lambdaApp.getContainerWeights());
+            }
         }
     }
 
     public void switchMuApp(MuApp muApp, int stateData){
         removeMuApp(muApp, muApp.getContainer());
-        addLambdaApp(new LambdaApp(lambdaApps.size(), muApp.getInvocationRate(), muApp.getFunctionData(), stateData));
+        LambdaApp lambdaApp = new LambdaApp(lambdaApps.size(), muApp.getInvocationRate(), muApp.getFunctionData(), stateData);
+        addLambdaApp(lambdaApp, computeNodes.getFirst());
     }
 
     public void switchLambdaApp(LambdaApp lambdaApp){
         removeLambdaApp(lambdaApp);
-        addMuApp(new MuApp(muApps.size(), lambdaApp.getInvocationRate(), lambdaApp.getFunctionData()));
+        MuApp muApp = new MuApp(muApps.size(), lambdaApp.getInvocationRate(), lambdaApp.getFunctionData());
+        addMuApp(muApp, getCheapestComputeNode(muApp));
     }
-    public HashMap<LambdaApp, Double> getLambdaCosts(){
-        HashMap <LambdaApp, Double> costs = new HashMap<>();
-        for (LambdaApp lambdaApp : lambdaApps){
-            double cost = 0;
-            for (Map.Entry<LambdaContainer, Double> entry : lambdaApp.getContainerWeights().entrySet()){
-                int CNId = Utils.getComputeNodeIndex(entry.getKey().getId());
-                double costToCN = computeNodes.get(CNId).getHopsToClient();
-                int costToCloud = CNId == 0 ? 0 : 10;
-                cost += (costToCN * lambdaApp.getFunctionData() + costToCloud * lambdaApp.getStateData()) * entry.getValue();
-            }
-            costs.put(lambdaApp, cost);
+
+    public double getAverageCostMuApp(){
+        double average = 0;
+        for(MuApp muApp : muApps){
+            ComputeNode cn = getComputeNode(muApp.getContainer().getId());
+            average += muApp.getFunctionData() * cn.getHopsToClient() * muApp.getInvocationRate();
         }
-        return costs;
+        average /= muApps.size();
+        return average;
     }
+
+    public double getCloudMuAppsRatio(){
+        double total = 0;
+        double cloud = 0;
+        for (MuApp muApp : muApps){
+            if (getComputeNode(muApp.getContainer().getId()) == computeNodes.getFirst()){
+                cloud += muApp.getInvocationRate();
+            }
+            total += muApp.getInvocationRate();
+        }
+        return cloud / total;
+    }
+
+    public double getAverageCostLambdaApp(){
+        double average = 0;
+        for (LambdaApp lambdaApp : lambdaApps){
+            for (Map.Entry<LambdaContainer, Double> entry : lambdaApp.getContainerWeights().entrySet()){
+                ComputeNode cn = getComputeNode(entry.getKey().getId());
+                double c1 = cn.getHopsToClient();
+                int c2 = cn == computeNodes.getFirst() ? 0 : 10;
+                average += (c1 * lambdaApp.getFunctionData() + c2 * lambdaApp.getStateData()) * entry.getValue() * lambdaApp.getInvocationRate();
+            }
+        }
+        average /= lambdaApps.size();
+        return average;
+    }
+
+    public double getCloudLambdaAppsRatio(){
+        double total = 0;
+        double cloud = 0;
+        for (LambdaApp lambdaApp : lambdaApps){
+            for (Map.Entry<LambdaContainer, Double> entry : lambdaApp.getContainerWeights().entrySet()){
+                ComputeNode cn = getComputeNode(entry.getKey().getId());
+                if (cn == computeNodes.getFirst()){
+                    cloud += lambdaApp.getInvocationRate() * entry.getValue();
+                }
+                total += lambdaApp.getInvocationRate() * entry.getValue();
+            }
+        }
+        return cloud / total;
+    }
+
 
 }
