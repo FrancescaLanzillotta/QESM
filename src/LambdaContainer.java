@@ -1,11 +1,11 @@
 public class LambdaContainer extends Container{
     private int serviceRate;
-    private double availResources;
+    private double residualCapacity;
 
     public LambdaContainer(String id, int serviceRate) {
         super(id);
         this.serviceRate = serviceRate;
-        availResources = serviceRate;
+        residualCapacity = serviceRate;
     }
 
     public int getServiceRate() {
@@ -14,24 +14,24 @@ public class LambdaContainer extends Container{
 
     public void useResources(double resources){
         if (resources > 0) {
-            if (resources <= availResources){
-                availResources -= resources;
+            if (resources <= residualCapacity){
+                residualCapacity -= resources;
             }
         }
     }
 
     public void freeResources(double resources){
         if (resources > 0){
-            if (availResources + resources <= serviceRate){
-                availResources += resources;
+            if (residualCapacity + resources <= serviceRate){
+                residualCapacity += resources;
             } else {
-                availResources = serviceRate;
+                residualCapacity = serviceRate;
             }
         }
     }
 
-    public double getAvailResources() {
-        return availResources;
+    public double getResidualCapacity() {
+        return residualCapacity;
     }
 
 
@@ -40,7 +40,7 @@ public class LambdaContainer extends Container{
         return "LambdaContainer{" +
                 "id=" + getId() +
                 ", serviceRate=" + serviceRate +
-                ", availResources=" + availResources +
+                ", availResources=" + residualCapacity +
                 '}';
     }
 }
