@@ -1,6 +1,6 @@
 import java.util.LinkedList;
 
-public class ComputeNode {
+public class ComputeNode{
     private String id;
     private int hopsToClient; // 2 (far-edge) | 6 (near-edge) | 12 (cloud)
     private int maxContainers;
@@ -56,7 +56,6 @@ public class ComputeNode {
             mc = new MuContainer(id + "-" + muAppId);
             muContainers.add(mc);
         }
-
         return mc;
     }
 

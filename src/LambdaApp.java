@@ -2,12 +2,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class LambdaApp extends Application {
-    private int stateData;
     private HashMap<LambdaContainer, Double> containerWeights;
 
     public LambdaApp(int id, int invocationRate, int functionData, int stateData) {
-        super("LAMBDA" + id , invocationRate, functionData);
-        this.stateData = stateData;
+        super("LAMBDA" + id , invocationRate, functionData, stateData);
         containerWeights = new HashMap<>();
     }
 
@@ -28,9 +26,6 @@ public class LambdaApp extends Application {
         containerWeights.clear();
     }
 
-    public int getStateData() {
-        return stateData;
-    }
 
     public HashMap<LambdaContainer, Double> getContainerWeights() {
         return containerWeights;
@@ -46,7 +41,7 @@ public class LambdaApp extends Application {
                 "id=" + getId() +
                 ", invocationRate=" + getInvocationRate() +
                 ", functionData=" + getFunctionData() +
-                ", stateData=" + stateData +
+                ", stateData=" + getStateData() +
                 ", containerWeights=" + containerWeights +
                 '}';
     }

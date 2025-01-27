@@ -1,14 +1,16 @@
 public abstract class Application {
     private int invocationRate;
     private int functionData;
+    private int stateData;
     private String id;
     public abstract void invokeFunction();
     public abstract void resetAllocation();
 
-    public Application(String id, int invocationRate, int functionData) {
+    public Application(String id, int invocationRate, int functionData, int stateData) {
         this.id = id;
         this.invocationRate = invocationRate;
         this.functionData = functionData;
+        this.stateData = stateData;
     }
 
     public int getInvocationRate() {
@@ -17,6 +19,10 @@ public abstract class Application {
 
     public int getFunctionData() {
         return functionData;
+    }
+
+    public int getStateData() {
+        return stateData;
     }
 
     public String getId() {

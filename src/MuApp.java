@@ -1,12 +1,12 @@
 public class MuApp extends Application {
     private MuContainer container;
 
-    public MuApp(int id, int invocationRate, int functionData) {
-        super("MU" + id , invocationRate, functionData);
+    public MuApp(int id, int invocationRate, int functionData, int stateData) {
+        super("MU" + id , invocationRate, functionData, stateData);
     }
 
     public void changeType(Orchestrator o, int stateData) {
-        o.switchMuApp(this, stateData);
+        o.switchMuApp(this);
     }
 
     public void invokeFunction() {

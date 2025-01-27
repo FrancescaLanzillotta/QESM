@@ -156,7 +156,7 @@ public class Orchestrator {
 
         // if there are more available containers than apps, add dummy applications with no associated cost
         while (muAppHashSet.size() < muContainerHashSet.size()){
-            MuApp dummy = new MuApp(muAppHashSet.size(), 0, 0);
+            MuApp dummy = new MuApp(muAppHashSet.size(), 0, 0, 0);
             graph.addVertex(dummy);
             muAppHashSet.add(dummy);
             for (MuContainer mc : muContainerHashSet){
@@ -243,9 +243,9 @@ public class Orchestrator {
                 e = graph.addEdge(dummyLambdaCon, dest);
                 graph.setEdgeWeight(e, 0);
                 upperArcCapacities.put(e, maxCap);
-                // Each container node has one outcoming edge connecting it to every application node previously added
+                // Each container node has one incoming edge connecting it to every application node previously added
                 // to the graph, with associated cost depending on c1, c2 and the application's functionData and
-                // stateData. The capacities of the edges is defined as the minimum value between the app's invocation
+                // stateData. The capacity of the edge is defined as the minimum value between the app's invocation
                 // rate and the container's serviceRate multiplied by the over provisioning parameter beta.
                 for (LambdaApp lambdaApp : lambdaApps){
                     e = graph.addEdge(lambdaApp, lc);
@@ -354,21 +354,6 @@ public class Orchestrator {
                 }
             }
         }
-//        for (LambdaApp lambdaApp : lambdaApps){
-//            int functionData = lambdaApp.getFunctionData();
-//            int stateData = lambdaApp.getStateData();
-//            int residualInvocation = lambdaApp.getInvocationRate();
-//            while (residualInvocation > 0){
-//                ComputeNode cheapest = getCheapestComputeNode(lambdaApp);
-//                if (cheapest == null){
-//                    System.out.println(computeNodes);
-//                    System.out.println(lambdaApp);
-//                }
-//                double tmp = cheapest.getTotalResidualCapacity();
-//                addLambdaApp(lambdaApp, cheapest);
-//                residualInvocation -= (int) (tmp - cheapest.getTotalResidualCapacity());
-//            }
-//        }
         if (display) {
             System.out.println("----- Lambda apps assigned -----");
             for (LambdaApp lambdaApp : lambdaApps){
@@ -427,15 +412,15 @@ public class Orchestrator {
         }
     }
 
-    public void switchMuApp(MuApp muApp, int stateData){
+    public void switchMuApp(MuApp muApp){
         removeMuApp(muApp);
-        LambdaApp lambdaApp = new LambdaApp(lambdaApps.size(), muApp.getInvocationRate(), muApp.getFunctionData(), stateData);
+        LambdaApp lambdaApp = new LambdaApp(lambdaApps.size(), muApp.getInvocationRate(), muApp.getFunctionData(), muApp.getStateData());
         addLambdaApp(lambdaApp, computeNodes.getFirst());
     }
 
     public void switchLambdaApp(LambdaApp lambdaApp){
         removeLambdaApp(lambdaApp);
-        MuApp muApp = new MuApp(muApps.size(), lambdaApp.getInvocationRate(), lambdaApp.getFunctionData());
+        MuApp muApp = new MuApp(muApps.size(), lambdaApp.getInvocationRate(), lambdaApp.getFunctionData(), lambdaApp.getStateData());
         addMuApp(muApp, getCheapestComputeNode(muApp));
     }
 
