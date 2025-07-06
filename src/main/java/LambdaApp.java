@@ -1,37 +1,36 @@
 import java.util.HashMap;
-import java.util.Map;
 
 public class LambdaApp extends Application {
-    private HashMap<LambdaContainer, Double> containerWeights;
+    private HashMap<LambdaContainer, Double> containersWeights;
 
     public LambdaApp(int id, int invocationRate, int functionData, int stateData) {
         super("LAMBDA" + id , invocationRate, functionData, stateData);
-        containerWeights = new HashMap<>();
+        containersWeights = new HashMap<>();
     }
-
-    public void assignLambdaContainer(LambdaContainer lc, double weight){
-        if (containerWeights.containsKey(lc)){
-            containerWeights.put(lc, weight + containerWeights.get(lc));
-        } else {
-            containerWeights.put(lc, weight);
-        }
-    }
-
+    @Override
     public void invokeFunction() {
         // TODO: Pick a container based on the weights and do something with it (a counter maybe?)
     }
 
+    public HashMap<LambdaContainer, Double> getContainersWeights() {
+        return containersWeights;
+    }
+
+    public void assignLambdaContainer(LambdaContainer lc, double weight){
+        if (containersWeights.containsKey(lc)){
+            containersWeights.put(lc, weight + containersWeights.get(lc));
+        } else {
+            containersWeights.put(lc, weight);
+        }
+    }
+
     @Override
     public void resetAllocation() {
-        containerWeights.clear();
+        containersWeights.clear();
     }
 
-
-    public HashMap<LambdaContainer, Double> getContainerWeights() {
-        return containerWeights;
-    }
-
-    public void changeType(Orchestrator o) {
+    @Override
+    public void changeOperationMode(Orchestrator o) {
         o.switchLambdaApp(this);
     }
 
@@ -42,7 +41,7 @@ public class LambdaApp extends Application {
                 ", invocationRate=" + getInvocationRate() +
                 ", functionData=" + getFunctionData() +
                 ", stateData=" + getStateData() +
-                ", containerWeights=" + containerWeights +
+                ", containerWeights=" + containersWeights +
                 '}';
     }
 

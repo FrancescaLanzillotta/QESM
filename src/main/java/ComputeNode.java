@@ -2,13 +2,13 @@ import java.util.LinkedList;
 
 public class ComputeNode{
     private String id;
-    private int hopsToClient; // 2 (far-edge) | 6 (near-edge) | 12 (cloud)
-    private int maxContainers;
-    private double alpha;
-    private int serviceRate;
-    private int maxMu;
     private LinkedList<MuContainer> muContainers;
     private LinkedList<LambdaContainer> lambdaContainers;
+    private double alpha;
+    private int hopsToClient; // 2 (far-edge) | 6 (near-edge) | 12 (cloud)
+    private int maxContainers;
+    private int serviceRate;
+    private int maxMu;
 
     public ComputeNode(int id, int maxContainers, double alpha, int hopsToClient) {
         this.id = "CN" + id;
@@ -34,16 +34,22 @@ public class ComputeNode{
         return id;
     }
 
-    public int getMaxMu() {
-        return maxMu;
-    }
-
     public int getMaxContainers() {
         return maxContainers;
     }
 
     public int getRemainderLambdaContainers(){
         return maxContainers - muContainers.size() - lambdaContainers.size();
+    }
+
+    // -------- Mu Containers --------
+
+    public int getMaxMu() {
+        return maxMu;
+    }
+
+    public int getMuContainersSize(){
+        return muContainers.size();
     }
 
     public int getRemainderMuContainers(){
@@ -59,6 +65,10 @@ public class ComputeNode{
         return mc;
     }
 
+    public void removeMuContainer(MuContainer mc){ muContainers.remove(mc);}
+
+    // -------- Lambda Containers --------
+
     public LambdaContainer addLambdaContainer(){
         LambdaContainer lc = null;
         if (lambdaContainers.size() < maxContainers - muContainers.size()){
@@ -68,14 +78,12 @@ public class ComputeNode{
         return lc;
     }
 
-    public void removeMuContainer(MuContainer mc){ muContainers.remove(mc);}
+    public void removeLambdaContainer(LambdaContainer lc){
+        lambdaContainers.remove(lc);
+    }
 
     public void removeInactive(){
         lambdaContainers.removeIf(lc -> lc.getResidualCapacity() == lc.getServiceRate());
-    }
-
-    public void removeLambdaContainer(LambdaContainer lc){
-        lambdaContainers.remove(lc);
     }
 
     public LinkedList<LambdaContainer> getLambdaContainers() {
@@ -96,11 +104,9 @@ public class ComputeNode{
         return serviceRate * lambdaContainers.size();
     }
 
-    public int getMuContainersSize(){
-        return muContainers.size();
-    }
-
     public int getLambdaContainersSize() {return lambdaContainers.size();}
+
+    // ----------------
 
     @Override
     public String toString() {

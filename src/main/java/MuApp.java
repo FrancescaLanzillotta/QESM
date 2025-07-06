@@ -4,13 +4,19 @@ public class MuApp extends Application {
     public MuApp(int id, int invocationRate, int functionData, int stateData) {
         super("MU" + id , invocationRate, functionData, stateData);
     }
-
-    public void changeType(Orchestrator o, int stateData) {
-        o.switchMuApp(this);
-    }
-
+    @Override
     public void invokeFunction() {
         container.performFunction();
+    }
+
+    public MuContainer getContainer() {
+        return container;
+    }
+
+    public void assignMuContainer(MuContainer muContainer){
+        if (muContainer != null){
+            container = muContainer;
+        }
     }
 
     @Override
@@ -18,14 +24,9 @@ public class MuApp extends Application {
         container = null;
     }
 
-    public void assignContainer(MuContainer muContainer){
-        if (muContainer != null){
-            container = muContainer;
-        }
-    }
-
-    public MuContainer getContainer() {
-        return container;
+    @Override
+    public void changeOperationMode(Orchestrator o) {
+        o.switchMuApp(this);
     }
 
     @Override

@@ -1,15 +1,11 @@
 public class LambdaContainer extends Container{
-    private int serviceRate;
+    private double serviceRate;
     private double residualCapacity;
 
-    public LambdaContainer(String id, int serviceRate) {
+    public LambdaContainer(String id, double serviceRate) {
         super(id);
         this.serviceRate = serviceRate;
         residualCapacity = serviceRate;
-    }
-
-    public int getServiceRate() {
-        return serviceRate;
     }
 
     public void useResources(double resources){
@@ -30,10 +26,13 @@ public class LambdaContainer extends Container{
         }
     }
 
+    public double getServiceRate() {
+        return serviceRate;
+    }
+
     public double getResidualCapacity() {
         return residualCapacity;
     }
-
 
     @Override
     public String toString() {

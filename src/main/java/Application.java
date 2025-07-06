@@ -5,6 +5,7 @@ public abstract class Application {
     private String id;
     public abstract void invokeFunction();
     public abstract void resetAllocation();
+    public abstract void changeOperationMode(Orchestrator o);
 
     public Application(String id, int invocationRate, int functionData, int stateData) {
         this.id = id;
@@ -28,6 +29,5 @@ public abstract class Application {
     public String getId() {
         return id;
     }
-
 
 }
