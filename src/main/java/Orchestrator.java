@@ -39,7 +39,7 @@ public class Orchestrator {
 
     private void addMuApp(MuApp muApp, ComputeNode computeNode){
         muApps.add(muApp);
-        muApp.assignContainer(computeNode.addMuContainer(muApp.getId()));
+        muApp.assignMuContainer(computeNode.addMuContainer(muApp.getId()));
 
     }
 
@@ -77,10 +77,10 @@ public class Orchestrator {
 
     private void removeLambdaApp(LambdaApp lambdaApp){
         lambdaApps.remove(lambdaApp);
-        for (Map.Entry<LambdaContainer, Double> entry : lambdaApp.getContainerWeights().entrySet()){
+        for (Map.Entry<LambdaContainer, Double> entry : lambdaApp.getContainersWeights().entrySet()){
             entry.getKey().freeResources(entry.getValue() * lambdaApp.getInvocationRate());
         }
-        lambdaApp.getContainerWeights().clear();
+        lambdaApp.getContainersWeights().clear();
 
         for (ComputeNode computeNode : computeNodes){
             computeNode.removeInactive();
@@ -97,11 +97,11 @@ public class Orchestrator {
         }
 
         for (LambdaApp lambdaApp : lambdaApps){
-            if (!lambdaApp.getContainerWeights().isEmpty()){
-                for (Map.Entry<LambdaContainer, Double> entry : lambdaApp.getContainerWeights().entrySet()){
+            if (!lambdaApp.getContainersWeights().isEmpty()){
+                for (Map.Entry<LambdaContainer, Double> entry : lambdaApp.getContainersWeights().entrySet()){
                     entry.getKey().freeResources(entry.getValue() * lambdaApp.getInvocationRate());
                 }
-                lambdaApp.getContainerWeights().clear();
+                lambdaApp.getContainersWeights().clear();
             }
 
             for (ComputeNode computeNode : computeNodes){
@@ -174,7 +174,7 @@ public class Orchestrator {
             if (muApps.contains(graph.getEdgeSource(e))){ // weed out dummies
                 MuApp muApp = (MuApp) graph.getEdgeSource(e);
                 MuContainer muContainer = (MuContainer) graph.getEdgeTarget(e);
-                muApp.assignContainer(getComputeNode(muContainer.getId()).addMuContainer(muApp.getId()));
+                muApp.assignMuContainer(getComputeNode(muContainer.getId()).addMuContainer(muApp.getId()));
             }
         }
     }
@@ -204,19 +204,12 @@ public class Orchestrator {
         // total amount of flow to input in the graph in order to solve the problem
         int totalFlow = 0;
 
-        // For each application, add two nodes: a dummy node and the app node.
-        // The dummy node has one incoming edge connecting it to the source node with cost zero and capacity equal to
-        // the invocation rate of the app, and one outcoming edge connecting it to the app, also with cost zero and
-        // capacity equal to the invocation rate of the app.
+        // For each application, add a node, with one incoming edge connecting it to the source node with cost zero and
+        // capacity equal to the invocation rate of the app
         for (LambdaApp lambdaApp : lambdaApps){
             totalFlow += lambdaApp.getInvocationRate();
-            String dummyLambdaId = "'" + lambdaApp.getId();
             graph.addVertex(lambdaApp);
-            graph.addVertex(dummyLambdaId);
-            DefaultWeightedEdge e = graph.addEdge(source, dummyLambdaId);
-            graph.setEdgeWeight(e, 0);
-            upperArcCapacities.put(e, lambdaApp.getInvocationRate());
-            e = graph.addEdge(dummyLambdaId, lambdaApp);
+            DefaultWeightedEdge e = graph.addEdge(source, lambdaApp);
             graph.setEdgeWeight(e, 0);
             upperArcCapacities.put(e, lambdaApp.getInvocationRate());
         }
@@ -225,22 +218,14 @@ public class Orchestrator {
         for (ComputeNode computeNode : computeNodes) {
             double c1 = computeNode.getHopsToClient();
             double c2 = computeNode == computeNodes.getFirst() ? 0 : 10;
-            // For each container, add two nodes: a dummy node and the container node.
-            // The dummy node has one incoming edge connecting it to the container node with cost zero and capacity
-            // equal to the service rate of the compute node hosting the container, and one outcoming edge connecting
-            // it to destination node, also with cost zero and capacity equal to the service rate of the compute node
-            // hosting the container
+            // For each container, add a node and add an outcoming edge connecting it to destination node, with
+            // cost zero and capacity equal to the service rate of the compute node hosting the container.
             while (computeNode.getRemainderLambdaContainers() > 0) {
                 LambdaContainer lc = computeNode.addLambdaContainer();
                 inactiveContainers.add(lc);
                 int maxCap = (int) Math.floor(lc.getServiceRate() * beta);
-                LambdaContainer dummyLambdaCon = new LambdaContainer("'" + lc.getId(), maxCap);
                 graph.addVertex(lc);
-                graph.addVertex(dummyLambdaCon);
-                DefaultWeightedEdge e = graph.addEdge(lc, dummyLambdaCon);
-                graph.setEdgeWeight(e, 0);
-                upperArcCapacities.put(e, maxCap);
-                e = graph.addEdge(dummyLambdaCon, dest);
+                DefaultWeightedEdge e = graph.addEdge(lc, dest);
                 graph.setEdgeWeight(e, 0);
                 upperArcCapacities.put(e, maxCap);
                 // Each container node has one incoming edge connecting it to every application node previously added
@@ -305,7 +290,7 @@ public class Orchestrator {
         if (display) {
             System.out.println("----- Lambda apps assigned -----");
             for (LambdaApp lambdaApp : lambdaApps){
-                System.out.println(lambdaApp.getId() + " -> " + lambdaApp.getContainerWeights());
+                System.out.println(lambdaApp.getId() + " -> " + lambdaApp.getContainersWeights());
             }
         }
     }
@@ -357,7 +342,7 @@ public class Orchestrator {
         if (display) {
             System.out.println("----- Lambda apps assigned -----");
             for (LambdaApp lambdaApp : lambdaApps){
-                System.out.println(lambdaApp.getId() + " -> " + lambdaApp.getContainerWeights());
+                System.out.println(lambdaApp.getId() + " -> " + lambdaApp.getContainersWeights());
             }
         }
     }
@@ -407,7 +392,7 @@ public class Orchestrator {
         if (display) {
             System.out.println("----- Lambda apps assigned -----");
             for (LambdaApp lambdaApp : lambdaApps){
-                System.out.println(lambdaApp.getId() + " -> " + lambdaApp.getContainerWeights());
+                System.out.println(lambdaApp.getId() + " -> " + lambdaApp.getContainersWeights());
             }
         }
     }
@@ -449,7 +434,7 @@ public class Orchestrator {
     public double getAverageCostLambdaApp(){
         double average = 0;
         for (LambdaApp lambdaApp : lambdaApps){
-            for (Map.Entry<LambdaContainer, Double> entry : lambdaApp.getContainerWeights().entrySet()){
+            for (Map.Entry<LambdaContainer, Double> entry : lambdaApp.getContainersWeights().entrySet()){
                 ComputeNode cn = getComputeNode(entry.getKey().getId());
                 double c1 = cn.getHopsToClient();
                 int c2 = cn == computeNodes.getFirst() ? 0 : 10;
@@ -464,7 +449,7 @@ public class Orchestrator {
         double total = 0;
         double cloud = 0;
         for (LambdaApp lambdaApp : lambdaApps){
-            for (Map.Entry<LambdaContainer, Double> entry : lambdaApp.getContainerWeights().entrySet()){
+            for (Map.Entry<LambdaContainer, Double> entry : lambdaApp.getContainersWeights().entrySet()){
                 ComputeNode cn = getComputeNode(entry.getKey().getId());
                 if (cn == computeNodes.getFirst()){
                     cloud += lambdaApp.getInvocationRate() * entry.getValue();
@@ -474,6 +459,5 @@ public class Orchestrator {
         }
         return cloud / total;
     }
-
 
 }
